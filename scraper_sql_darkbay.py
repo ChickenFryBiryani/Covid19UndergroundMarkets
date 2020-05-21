@@ -8,6 +8,9 @@ from selenium.webdriver.common.by import By
 from mysql_cryptomarketsdb import MySQLcryptomarketsDB
 from selenium_networksetting import *
 import os
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import smtplib
 
 # ++++++++++++++++++++ You need to update the following 3 variables ++++++++++++++++++++
 # Student Name Abbr
@@ -39,22 +42,23 @@ g_sOutputDirectoryTemp = "/home/rob/Covid19/UndergroundMarkets/db/"
 g_nTimeSecToWait = 30 * 24 * 60 * 60  # 30 days
 # set it True if you want to use the default username and password
 g_bUseDefaultUsernamePasswd = False
-# g_bTakeScreenshotOrNot = True  # if True, it will take screenshots.
 g_bTakeScreenshotOrNot = False  # if True, it will take screenshots.
 
 # Choose one of the categories. If you want to scrape new category, please look at the html source code
 c1 = 'category/02164500-b00f-11e9-8b8a-6907ed514d60'  # Carded Items
-# c2 = 'category/183960e0-b010-11e9-aefb-77eff3685e85'  # Security & Hosting
-# c3 = 'category/395aad00-b00e-11e9-ad2a-f1b9db0180aa'  # Counterfeit Items
-# c4 = 'category/a0f5ca30-b00f-11e9-b247-abf90d62ea65'  # Services
-# c5 = 'category/aa3983c0-b00e-11e9-8e2a-c3ca29964ed4'  # Digital Products
-# c6 = 'category/c0c5d3f0-b009-11e9-aea4-712111355e3c'  # Fraud
-# c7 = 'category/de55f160-b00f-11e9-b35e-33a425dd7b01'  # Other Listings
-# c8 = 'category/dff98750-b00e-11e9-b8fd-3190ad2a874f'  # Jewles & Gold
-# c9 = 'category/ed6c2ca0-b00f-11e9-9397-b98faaa936e4'  # Software & Malware
-# c10 = 'category/f4120b60-b00d-11e9-8e5c-632a53ce2a83'  # Guides & Tutorials
-# g_catCodes = [c1, c2, c3, c4, c5, c6, c7, c8, c9, c10]
+c2 = 'category/183960e0-b010-11e9-aefb-77eff3685e85'  # Security & Hosting
+c3 = 'category/395aad00-b00e-11e9-ad2a-f1b9db0180aa'  # Counterfeit Items
+c4 = 'category/a0f5ca30-b00f-11e9-b247-abf90d62ea65'  # Services
+c5 = 'category/aa3983c0-b00e-11e9-8e2a-c3ca29964ed4'  # Digital Products
+c6 = 'category/c0c5d3f0-b009-11e9-aea4-712111355e3c'  # Fraud
+c7 = 'category/de55f160-b00f-11e9-b35e-33a425dd7b01'  # Other Listings
+c8 = 'category/dff98750-b00e-11e9-b8fd-3190ad2a874f'  # Jewles & Gold
+c9 = 'category/ec94d1a0-b009-11e9-b912-d148462df001'  # Drugs
+c10 = 'category/ed6c2ca0-b00f-11e9-9397-b98faaa936e4'  # Software & Malware
+c11 = 'category/f4120b60-b00d-11e9-8e5c-632a53ce2a83'  # Guides & Tutorials
+# g_catCodes = [c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11]
 g_catCodes = [c1]
+g_startIndexes = {c1: 1, c2: 1, c3: 1, c4: 1, c5: 1, c6: 1, c7: 1, c8: 1, c9: 1, c10: 1, c11: 1}
 
 
 def Login(aBrowserDriver):
@@ -97,159 +101,178 @@ def NavigateToOnePage(aBrowserDriver, sPageLink):
     time.sleep(1)
 
 
+def NotifyMe(message='DarkBay script Failed!!!', subject='Scraper Alert.'):
+    myMailId = 'chickenfrybiryani@gmail.com'
+    password = open('password.txt', 'r').read()
+    recipients = ['4438089584@mms.att.net']
+    # recipients.append('aravuru1@student.gsu.edu')
+    msgMultiPart = MIMEMultipart()
+    msgMultiPart['from'] = myMailId
+    msgMultiPart['To'] = ', '.join(recipients)
+    msgMultiPart['Subject'] = subject
+    msgMultiPart.attach(MIMEText(message, 'plain'))
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(myMailId, password)
+    server.sendmail(myMailId, recipients, msgMultiPart.as_string())
+    server.quit()
+
+
 # The main function, the entry point
 if __name__ == '__main__':
-    # query the SQL server to retrieve some basic information
-    aMySQLcrptmktDB = MySQLcryptomarketsDB()
-    aMySQLcrptmktDB.m_sStudentNameAbbr = g_sStudentNameAbbr
-    aMySQLcrptmktDB.m_sMarketNameAbbr = g_sMarketNameAbbr
-    aMySQLcrptmktDB.m_nScrapingFreqDaysProductDesc = g_nScrapingFreqDaysProductDesc
-    aMySQLcrptmktDB.m_nScrapingFreqDaysProductRating = g_nScrapingFreqDaysProductRating
-    aMySQLcrptmktDB.m_nScrapingFreqDaysVendorProfile = g_nScrapingFreqDaysVendorProfile
-    aMySQLcrptmktDB.m_nScrapingFreqDaysVendorRating = g_nScrapingFreqDaysVendorRating
-    aMySQLcrptmktDB.MySQLQueryBasicInfor()
-    g_nMarketGlobalID = aMySQLcrptmktDB.m_nMarketGlobalID
-    if g_bUseDefaultUsernamePasswd:
-        g_sMarketUserName = aMySQLcrptmktDB.m_sMarketUserName  # this username and passwd are retrieved from DB server
-        g_sMarketPassword = aMySQLcrptmktDB.m_sMarketPassword
-    # Setup Firefox browser for visiting .onion sites through Tor (AWS proxy)
-    aBrowserDriver = selenium_setup_firefox_network()
-    # Visit the YellowBrick Market site and Login
-    Login(aBrowserDriver)
-    print("Login successful")
+    try:
+        # query the SQL server to retrieve some basic information
+        aMySQLcrptmktDB = MySQLcryptomarketsDB()
+        aMySQLcrptmktDB.m_sStudentNameAbbr = g_sStudentNameAbbr
+        aMySQLcrptmktDB.m_sMarketNameAbbr = g_sMarketNameAbbr
+        aMySQLcrptmktDB.m_nScrapingFreqDaysProductDesc = g_nScrapingFreqDaysProductDesc
+        aMySQLcrptmktDB.m_nScrapingFreqDaysProductRating = g_nScrapingFreqDaysProductRating
+        aMySQLcrptmktDB.m_nScrapingFreqDaysVendorProfile = g_nScrapingFreqDaysVendorProfile
+        aMySQLcrptmktDB.m_nScrapingFreqDaysVendorRating = g_nScrapingFreqDaysVendorRating
+        aMySQLcrptmktDB.MySQLQueryBasicInfor()
+        g_nMarketGlobalID = aMySQLcrptmktDB.m_nMarketGlobalID
+        if g_bUseDefaultUsernamePasswd:
+            g_sMarketUserName = aMySQLcrptmktDB.m_sMarketUserName
+            g_sMarketPassword = aMySQLcrptmktDB.m_sMarketPassword
+        # Setup Firefox browser for visiting .onion sites through Tor (AWS proxy)
+        aBrowserDriver = selenium_setup_firefox_network()
+        # Visit the YellowBrick Market site and Login
+        Login(aBrowserDriver)
+        print("Login successful")
 
-    # Visit each category in the category list
-    for cat_code in g_catCodes:
-        sCat_Link = g_sMarketURL + cat_code
-        NavigateToOnePage(aBrowserDriver, sCat_Link)
-        AllPages = aBrowserDriver.find_elements_by_xpath("//a[contains(@href,'?page=')]")
-        LastPageLink = AllPages[len(AllPages) - 2]
-        Last = LastPageLink.get_attribute("href")
-        maxIndexofPage = int(Last.partition('page=')[2])
-        vAllPageLinks = []
+        # Visit each category in the category list
+        for cat_code in g_catCodes:
+            sCat_Link = g_sMarketURL + cat_code
+            NavigateToOnePage(aBrowserDriver, sCat_Link)
+            AllPages = aBrowserDriver.find_elements_by_xpath("//a[contains(@href,'?page=')]")
+            LastPageLink = AllPages[len(AllPages) - 2]
+            Last = LastPageLink.get_attribute("href")
+            maxIndexofPage = int(Last.partition('page=')[2])
+            vAllPageLinks = []
 
-        # Scrape Starts from this page
-        nIdxOfPage = 1
-        for i in range(nIdxOfPage, maxIndexofPage + 1):
-            sOnePageLink = sCat_Link + "?page=" + str(i)
-            if sOnePageLink not in vAllPageLinks:
-                vAllPageLinks.append(sOnePageLink)
-        print("Total number of pages: %d" % maxIndexofPage)
+            # Scrape Starts from this page. Change index in g_startIndex.
+            nIdxOfPage = g_startIndexes[cat_code]
+            for i in range(nIdxOfPage, maxIndexofPage + 1):
+                sOnePageLink = sCat_Link + "?page=" + str(i)
+                if sOnePageLink not in vAllPageLinks:
+                    vAllPageLinks.append(sOnePageLink)
+            print("Total number of pages: %d" % maxIndexofPage)
 
-        for sOnePageLink in vAllPageLinks:
-            nPageIndex = nIdxOfPage
-            nIdxOfPage += 1
-            print("page %d" % nPageIndex)
-            NavigateToOnePage(aBrowserDriver, sOnePageLink)
+            for sOnePageLink in vAllPageLinks:
+                nPageIndex = nIdxOfPage
+                nIdxOfPage += 1
+                print("page %d" % nPageIndex)
+                NavigateToOnePage(aBrowserDriver, sOnePageLink)
 
-            # For each product in this page, insert them into the list of all products.
-            vElementsProducts = aBrowserDriver.find_elements_by_xpath("//a[contains(@href,'/product/')]")
-            vAllProductsInThisPage = []
-            for aElementOneProduct in vElementsProducts:
-                sProductHref = aElementOneProduct.get_attribute("href")
-                if sProductHref not in vAllProductsInThisPage:
-                    vAllProductsInThisPage.append(sProductHref)
-            # For each vendor in this page, insert them into the list of all vendors.
-            vElementsVendors = aBrowserDriver.find_elements_by_xpath("//a[contains(@href,'/vendor/')]")
-            vAllVendorsInThisPage = []
-            for aElementOneVendor in vElementsVendors:
-                sVendorHref = aElementOneVendor.get_attribute("href")
-                if sVendorHref not in vAllVendorsInThisPage:
-                    vAllVendorsInThisPage.append(sVendorHref)
+                # For each product in this page, insert them into the list of all products.
+                vElementsProducts = aBrowserDriver.find_elements_by_xpath("//a[contains(@href,'/product/')]")
+                vAllProductsInThisPage = []
+                for aElementOneProduct in vElementsProducts:
+                    sProductHref = aElementOneProduct.get_attribute("href")
+                    if sProductHref not in vAllProductsInThisPage:
+                        vAllProductsInThisPage.append(sProductHref)
+                # For each vendor in this page, insert them into the list of all vendors.
+                vElementsVendors = aBrowserDriver.find_elements_by_xpath("//a[contains(@href,'/vendor/')]")
+                vAllVendorsInThisPage = []
+                for aElementOneVendor in vElementsVendors:
+                    sVendorHref = aElementOneVendor.get_attribute("href")
+                    if sVendorHref not in vAllVendorsInThisPage:
+                        vAllVendorsInThisPage.append(sVendorHref)
 
-            # 1. Scrape the product information
-            for sProductHref in vAllProductsInThisPage:
-                sProductMarketID = sProductHref.partition('product/')[2]
-                bWhetherScraping = aMySQLcrptmktDB.CheckWhetherScrapingProductDescription(sProductMarketID)
-                # bWhetherScraping = True
-                if bWhetherScraping:
-                    NavigateToOnePage(aBrowserDriver, sProductHref)
-                    # Save the html
-                    sCurrentUTCTime = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
-                    aMySQLcrptmktDB.m_sCurrentUTCTime = sCurrentUTCTime
-                    sLocalOutputFileName = sCurrentUTCTime + '_' + str(g_nMarketGlobalID).zfill(2) + '_' + sProductMarketID + '_pd'
-                    sLocalOutputFileNameFullPath = g_sOutputDirectoryTemp + sLocalOutputFileName
-                    # Get screen shot of Product Description
-                    aBrowserDriver.get_screenshot_as_file(sLocalOutputFileNameFullPath + "_img.png")
-                    aFile = open(sLocalOutputFileNameFullPath, "w")
-                    aFile.write(aBrowserDriver.page_source)
-                    aFile.close()
-                    aMySQLcrptmktDB.UpdateDatabaseUploadFileProductDescription(sLocalOutputFileName, sLocalOutputFileNameFullPath, sProductMarketID)
-                    os.remove(sLocalOutputFileNameFullPath)
-                    # Get image of Product
-                    """if g_bTakeScreenshotOrNot:
+                # 1. Scrape the product information
+                for sProductHref in vAllProductsInThisPage:
+                    sProductMarketID = sProductHref.partition('product/')[2]
+                    bWhetherScraping = aMySQLcrptmktDB.CheckWhetherScrapingProductDescription(sProductMarketID)
+                    # bWhetherScraping = True
+                    if bWhetherScraping:
+                        NavigateToOnePage(aBrowserDriver, sProductHref)
+                        # Save the html
+                        sCurrentUTCTime = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+                        aMySQLcrptmktDB.m_sCurrentUTCTime = sCurrentUTCTime
+                        sLocalOutputFileName = sCurrentUTCTime + '_' + str(g_nMarketGlobalID).zfill(2) + \
+                                               '_' + sProductMarketID + '_pd'
+                        sLocalOutputFileNameFullPath = g_sOutputDirectoryTemp + sLocalOutputFileName
+                        # Get screen shot of Product Description
                         aBrowserDriver.get_screenshot_as_file(sLocalOutputFileNameFullPath + "_img.png")
-                    vaElementsProductImages = aBrowserDriver.find_elements_by_xpath("//img[contains(@src,'products')]")
-                    vsProductImageURL = []
-                    for aElementProductImage in vaElementsProductImages:
-                        sOneProductImageURL = aElementProductImage.get_attribute("src")
-                        vsProductImageURL.append(sOneProductImageURL)
-                    print(vsProductImageURL)
-                    nIndexOfImages = 1
-                    for sOneProductImageURL in vsProductImageURL:
-                        aBrowserDriver.get(sOneProductImageURL)
-                        time.sleep(3)  # wait for 3 seconds
-                        sLocalOutputImageFileNameFullPath = sLocalOutputFileName + '_' + str(nIndexOfImages)
-                        aElementImage = aBrowserDriver.find_element_by_xpath("//img")
-                        ActionChains(aBrowserDriver).move_to_element(aElementImage).context_click().perform()
-                        pyautogui.hotkey('ctrl', 'v')
-                        pyautogui.typewrite(sLocalOutputImageFileNameFullPath)
-                        pyautogui.hotkey('alt', 's')
-                        nIndexOfImages += 1"""
+                        aFile = open(sLocalOutputFileNameFullPath, "w")
+                        aFile.write(aBrowserDriver.page_source)
+                        aFile.close()
+                        aMySQLcrptmktDB.UpdateDatabaseUploadFileProductDescription(sLocalOutputFileName,
+                                                                                   sLocalOutputFileNameFullPath,
+                                                                                   sProductMarketID)
+                        os.remove(sLocalOutputFileNameFullPath)
 
-                # scrape product feedback
-                bWhetherScraping = aMySQLcrptmktDB.CheckWhetherScrapingProductRating(sProductMarketID)
-                # bWhetherScraping = True
-                if bWhetherScraping:
-                    sProductFeedbackHref = sProductHref+"/feedback#"
-                    sCurrentUTCTime = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
-                    aMySQLcrptmktDB.m_sCurrentUTCTime = sCurrentUTCTime
-                    sLocalOutputFileName = sCurrentUTCTime + '_' + str(g_nMarketGlobalID).zfill(2) + '_' + sProductMarketID + '_pr'
-                    sLocalOutputFileNameFullPath = g_sOutputDirectoryTemp + sLocalOutputFileName
-                    NavigateToOnePage(aBrowserDriver, sProductFeedbackHref)
-                    # Save the html
-                    aFile = open(sLocalOutputFileNameFullPath, "w")
-                    aFile.write(aBrowserDriver.page_source)
-                    aFile.close()
-                    aMySQLcrptmktDB.UpdateDatabaseUploadFileProductRating(sLocalOutputFileName, sLocalOutputFileNameFullPath, sProductMarketID)
-                    os.remove(sLocalOutputFileNameFullPath)
-            print("Products %d" % len(vAllProductsInThisPage))
+                    # Not doing this in stage 1
+                    """
+                    # scrape product feedback
+                    bWhetherScraping = aMySQLcrptmktDB.CheckWhetherScrapingProductRating(sProductMarketID)
+                    if bWhetherScraping:
+                        sProductFeedbackHref = sProductHref+"/feedback#"
+                        sCurrentUTCTime = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+                        aMySQLcrptmktDB.m_sCurrentUTCTime = sCurrentUTCTime
+                        sLocalOutputFileName = sCurrentUTCTime + '_' + str(g_nMarketGlobalID).zfill(2) + '_' + \
+                                               sProductMarketID + '_pr'
+                        sLocalOutputFileNameFullPath = g_sOutputDirectoryTemp + sLocalOutputFileName
+                        NavigateToOnePage(aBrowserDriver, sProductFeedbackHref)
+                        # Save the html
+                        aFile = open(sLocalOutputFileNameFullPath, "w")
+                        aFile.write(aBrowserDriver.page_source)
+                        aFile.close()
+                        aMySQLcrptmktDB.UpdateDatabaseUploadFileProductRating(sLocalOutputFileName,
+                                                                              sLocalOutputFileNameFullPath,
+                                                                              sProductMarketID)
+                        os.remove(sLocalOutputFileNameFullPath)
+                    """
 
-            # 1. Scrape the vendor profile page
-            for sVendorHref in vAllVendorsInThisPage:
-                sVendorMarketID = sVendorHref[sVendorHref.rindex('/') + 1:]
-                bWhetherScraping = aMySQLcrptmktDB.CheckWhetherScrapingVendorProfile(sVendorMarketID)
-                if bWhetherScraping:
-                    sCurrentUTCTime = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
-                    aMySQLcrptmktDB.m_sCurrentUTCTime = sCurrentUTCTime
-                    sLocalOutputFileName = sCurrentUTCTime + '_' + str(g_nMarketGlobalID).zfill(2) + '_' + sVendorMarketID + '_vp'
-                    sLocalOutputFileNameFullPath = g_sOutputDirectoryTemp + sLocalOutputFileName
-                    NavigateToOnePage(aBrowserDriver, sVendorHref)
-                    # Save the html
-                    aFile = open(sLocalOutputFileNameFullPath, "w")
-                    aFile.write(aBrowserDriver.page_source)
-                    aFile.close()
-                    # Move file to server, and update the sql database
-                    aMySQLcrptmktDB.UpdateDatabaseUploadFileVendorProfile(sLocalOutputFileName, sLocalOutputFileNameFullPath, sVendorMarketID)
-                    sCommandRemoveLocalfiles = 'rm ' + sLocalOutputFileNameFullPath
-                    os.system(sCommandRemoveLocalfiles)
+                print("Products %d" % len(vAllProductsInThisPage))
 
-                # scrape vendors feedback
-                bWhetherScraping = aMySQLcrptmktDB.CheckWhetherScrapingVendorRating(sVendorMarketID)
-                if bWhetherScraping:
-                    vVendorFeedbackHref = sVendorHref + "/feedback"
-                    sCurrentUTCTime = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
-                    aMySQLcrptmktDB.m_sCurrentUTCTime = sCurrentUTCTime
-                    sLocalOutputFileName = sCurrentUTCTime + '_' + str(g_nMarketGlobalID).zfill(2) + '_' + sVendorMarketID + '_vr'
-                    sLocalOutputFileNameFullPath = g_sOutputDirectoryTemp + sLocalOutputFileName
-                    NavigateToOnePage(aBrowserDriver, vVendorFeedbackHref)
-                    aFile = open(sLocalOutputFileNameFullPath, "w")
-                    aFile.write(aBrowserDriver.page_source)
-                    aFile.close()
-                    aMySQLcrptmktDB.UpdateDatabaseUploadFileVendorRating(sLocalOutputFileName, sLocalOutputFileNameFullPath, sVendorMarketID)
-                    sCommandRemoveLocalfiles = 'rm ' + sLocalOutputFileNameFullPath
-                    os.system(sCommandRemoveLocalfiles)
-            print("Vendors %d" % len(vAllVendorsInThisPage))
+                # 1. Scrape the vendor profile page
+                for sVendorHref in vAllVendorsInThisPage:
+                    sVendorMarketID = sVendorHref[sVendorHref.rindex('/') + 1:]
+                    bWhetherScraping = aMySQLcrptmktDB.CheckWhetherScrapingVendorProfile(sVendorMarketID)
+                    if bWhetherScraping:
+                        sCurrentUTCTime = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+                        aMySQLcrptmktDB.m_sCurrentUTCTime = sCurrentUTCTime
+                        sLocalOutputFileName = sCurrentUTCTime + '_' + str(g_nMarketGlobalID).zfill(2) + '_' + \
+                                               sVendorMarketID + '_vp'
+                        sLocalOutputFileNameFullPath = g_sOutputDirectoryTemp + sLocalOutputFileName
+                        NavigateToOnePage(aBrowserDriver, sVendorHref)
+                        # Save the html
+                        aFile = open(sLocalOutputFileNameFullPath, "w")
+                        aFile.write(aBrowserDriver.page_source)
+                        aFile.close()
+                        # Move file to server, and update the sql database
+                        aMySQLcrptmktDB.UpdateDatabaseUploadFileVendorProfile(sLocalOutputFileName,
+                                                                              sLocalOutputFileNameFullPath,
+                                                                              sVendorMarketID)
+                        sCommandRemoveLocalfiles = 'rm ' + sLocalOutputFileNameFullPath
+                        os.system(sCommandRemoveLocalfiles)
 
-    print("All jobs are done! Thanks for inputting so many CAPTCHAs!")
-    aBrowserDriver.quit()
+                    # Not doing this in stage 1
+                    """
+                    # scrape vendors feedback
+                    bWhetherScraping = aMySQLcrptmktDB.CheckWhetherScrapingVendorRating(sVendorMarketID)
+                    if bWhetherScraping:
+                        vVendorFeedbackHref = sVendorHref + "/feedback"
+                        sCurrentUTCTime = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+                        aMySQLcrptmktDB.m_sCurrentUTCTime = sCurrentUTCTime
+                        sLocalOutputFileName = sCurrentUTCTime + '_' + str(g_nMarketGlobalID).zfill(2) + '_' + \
+                                               sVendorMarketID + '_vr'
+                        sLocalOutputFileNameFullPath = g_sOutputDirectoryTemp + sLocalOutputFileName
+                        NavigateToOnePage(aBrowserDriver, vVendorFeedbackHref)
+                        aFile = open(sLocalOutputFileNameFullPath, "w")
+                        aFile.write(aBrowserDriver.page_source)
+                        aFile.close()
+                        aMySQLcrptmktDB.UpdateDatabaseUploadFileVendorRating(sLocalOutputFileName,
+                                                                             sLocalOutputFileNameFullPath,
+                                                                             sVendorMarketID)
+                        sCommandRemoveLocalfiles = 'rm ' + sLocalOutputFileNameFullPath
+                        os.system(sCommandRemoveLocalfiles)
+                    """
+                print("Vendors %d" % len(vAllVendorsInThisPage))
+
+        print("All jobs are done! Thanks for inputting so many CAPTCHAs!")
+        aBrowserDriver.quit()
+    except:
+        NotifyMe(message='DarkBay script Failed!!!', subject='Scraper Alert.')
+        print('Script Failed.')
